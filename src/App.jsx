@@ -1,124 +1,77 @@
-import { useState } from "react";
-import { DndContext } from "@dnd-kit/core";
-import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useEffect, useState } from "react";
+import { DateTime } from "luxon";
 
-import PatientsCard from "./components/waitinglistDnd/PatientCard";
-import WaitingList from "./components/waitinglistDnd/WaitingList";
-import WaiterCard from "./components/waitinglistDnd/WaiterCard";
-
-const initailPatients = [
+const appointmentsSlots = [
   {
-    id: 1,
-    name: "John Doe",
+    appointmentId: null,
+    patientName: null,
+    time: "12:00 PM - 12:05 PM",
   },
   {
-    id: 2,
-    name: "Jane Doe",
+    appointmentId: null,
+    patientName: null,
+    time: "12:05 PM - 12:10 PM",
   },
   {
-    id: 3,
-    name: "Tom Smith",
+    appointmentId: "1",
+    patientName: "May Doe",
+    time: "12:10 PM - 12:15 PM",
   },
   {
-    id: 4,
-    name: "Jerry Smith",
+    appointmentId: "1",
+    patientName: "El Doe",
+    time: "12:15 PM - 12:20 PM",
+  },
+  {
+    appointmentId: null,
+    patientName: null,
+    time: "12:20 PM - 12:25 PM",
   },
 ];
 
+// Generate appointment slots for every 5 minutes from 12:00 to 14:00 PM
+const slots = [];
+for (let i = 12; i < 14; i++) {
+  for (let j = 0; j < 60; j += 5) {
+    const time = DateTime.fromObject({ hour: i, minute: j }).toFormat(
+      "HH:mm a"
+    );
+    slots.push(time);
+  }
+}
+
 function App() {
-  const [patients, setPatients] = useState(initailPatients);
-  const [waiters, setWaiters] = useState([]);
+  const [appointments, setAppointments] = useState([]);
 
-  const [animationParent] = useAutoAnimate();
-
-  // handling the drag end
-  function handleDragEnd(event) {
-    const { over, active } = event;
-    const activeIdParts = active.id.split("-");
-    const itemType = activeIdParts[0];
-    const itemId = parseInt(activeIdParts[1]);
-
-    if (over && over.id === "waitingList" && itemType === "patient") {
-      // The card has been dragged into the WaitingList
-      const activePatient = patients.find((p) => p.id === itemId);
-      const index = patients.findIndex((p) => p.id === itemId);
-
-      setWaiters((waiters) => [...waiters, activePatient]);
-
-      // Remove the patient from the list
-      setPatients((patients) =>
-        patients.filter((p) => p.id !== activePatient.id)
-      );
-    } else if (itemType === "waiter" && (!over || over.id !== "waitingList")) {
-      // The card has been dragged into the WaitingList
-      const activeWaitingPatient = waiters.find((p) => p.id === itemId);
-      const index = waiters.findIndex((p) => p.id === itemId);
-
-      // The card has been dragged outside of the WaitingList
-      setWaiters((waiters) => waiters.filter((waiter) => waiter.id !== itemId));
-    }
-  }
-
-  function undo({ action, patient, index }) {
-    if (action === "addBacktoPatients") {
-      setPatients((prevPatients) => {
-        const newPatients = [...prevPatients];
-        newPatients.splice(index, 0, patient);
-        return newPatients;
-      });
-      setWaiters((prevWaiters) =>
-        prevWaiters.filter((p) => p.id !== patient.id)
-      );
-    } else if (action === "addBacktoWaiters") {
-      setWaiters((prevWaiters) => {
-        const newWaiters = [...prevWaiters];
-        newWaiters.splice(index, 0, patient);
-        return newWaiters;
-      });
-      setPatients((prevPatients) =>
-        prevPatients.filter((p) => p.id !== patient.id)
-      );
-    }
-  }
+  // group appointments which are same by appointmentId
+  useEffect(() => {
+    const groupedAppointments = [];
+    appointmentsSlots.forEach((slot) => {
+      if (slot.appointmentId !== null) {
+        const tempSlots = appointmentsSlots.filter(
+          (s) => s.appointmentId === slot.appointmentId
+        );
+        groupedAppointments.push(tempSlots);
+      }
+    });
+    console.log("groupedAppointments", groupedAppointments);
+    setAppointments(groupedAppointments);
+  }, []);
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between",
-        }}
-      >
-        <div
-          ref={animationParent}
-          style={{ display: "flex", flexDirection: "column", gap: "2rem" }}
-        >
-          {patients.map((patient) => (
-            <PatientsCard
-              key={patient.id}
-              patientKey={`patient-${patient.id}`}
-              name={patient.name}
-            />
-          ))}
-        </div>
-
-        {/* Display waitinglist */}
-        <div>
-          <WaitingList>
-            <div ref={animationParent}>
-              {waiters.map((waiter) => (
-                <WaiterCard
-                  key={waiter.id}
-                  waiterKey={`waiter-${waiter.id}`}
-                  name={waiter.name}
-                />
-              ))}
-            </div>
-          </WaitingList>
-        </div>
+    <div className="p-16">
+      <div>
+        {/* map to show the slots and here also wanna show the appointments */}
+        {slots.map((slot) => (
+          <div
+            key={slot}
+            className="flex h-10 items-center justify-center border-b-2"
+          >
+            {slot}
+          </div>
+        ))}
       </div>
-    </DndContext>
+    </div>
   );
 }
 
