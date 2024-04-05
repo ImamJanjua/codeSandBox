@@ -102,14 +102,14 @@ function DayView() {
           >
             {/* <div className="row-end-1 h-7"></div> */}
             {hours.map((hour, index) => (
-              <div key={index}>
+              <React.Fragment key={index}>
                 <div>
                   <div className="left-0 -ml-14 -mt-2.5 w-14 pr-2 text-right text-xs leading-5 text-gray-400">
                     {hour}
                   </div>
                 </div>
                 <div />
-              </div>
+              </React.Fragment>
             ))}
           </div>
 
