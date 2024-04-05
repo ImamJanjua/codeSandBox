@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { DateTime, Interval } from "luxon";
 
-// Generate hours from 12:00 AM till 11:PM
 const hours = [];
 for (let i = 0; i <= 23; i++) {
   const hour = DateTime.fromObject({ hour: i }).toFormat("h a");
   hours.push(hour);
 }
-// create 5 minute slots from 12:00 AM to 12:00 PM
 let start = DateTime.fromISO("2022-01-01T00:00:00.000Z").set({
   hour: 0,
   minute: 0,
@@ -31,35 +35,57 @@ interval.splitBy({ minutes: 5 }).forEach((i, index) => {
 function DayView() {
   const [draggedSlots, setDraggedSlots] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const gridRef = useRef(null);
 
-  const handleMouseDown = (slot) => {
-    console.log("mouse down", slot);
+  useEffect(() => {
+    console.log("draggedSlots", draggedSlots);
+  }, [draggedSlots]);
+
+  const handleMouseDown = useCallback((event) => {
+    console.log("mouse down", event);
+    event.preventDefault();
     setIsDragging(true);
-    setDraggedSlots([slot]);
-  };
+  }, []);
 
-  const handleMouseOver = (slot) => {
-    if (isDragging) {
-      console.log("mouse over", slot);
-      setDraggedSlots((prevSlots) => {
-        const slotIndexInDraggedSlots = prevSlots.findIndex(
-          (s) => s.index === slot.index
-        );
-        // remove last item if found a slot in dragged slots = drag is in reverse order
-        if (slotIndexInDraggedSlots !== -1) {
-          console.log("remove last item");
-          return prevSlots.slice(0, -1);
-        }
-        return [...prevSlots, slot];
+  const handleMouseMove = useCallback(
+    (event) => {
+      if (!isDragging) {
+        return;
+      }
+
+      window.requestAnimationFrame(() => {
+        const gridRect = gridRef.current.getBoundingClientRect();
+        console.log("gridRect", gridRect);
+        const relativeY = event.clientY - gridRect.top;
+        const slotHeight = gridRect.height / slots.length;
+        const slotIndex = Math.floor(relativeY / slotHeight);
+        const slot = slots[slotIndex];
+        console.log("mouse move", event);
+
+        setDraggedSlots((prevSlots) => {
+          const slotIndexInDraggedSlots = prevSlots.findIndex(
+            (s) => s.index === slot.index
+          );
+
+          if (slotIndexInDraggedSlots !== -1) {
+            if (slotIndexInDraggedSlots !== prevSlots.length - 1) {
+              return prevSlots.slice(0, -1);
+            } else {
+              return prevSlots;
+            }
+          }
+          return [...prevSlots, slot];
+        });
       });
-    }
-  };
+    },
+    [isDragging]
+  );
 
-  const handleMouseUp = (slot) => {
-    console.log("mouse up", slot);
+  const handleMouseUp = useCallback((event) => {
+    console.log("mouse up", event);
     setIsDragging(false);
     setDraggedSlots([]);
-  };
+  }, []);
 
   return (
     <div className="flex h-full flex-col p-10">
@@ -71,33 +97,32 @@ function DayView() {
         <div className="grid flex-auto grid-cols-1 grid-rows-1">
           {/* visible grid with hours */}
           <div
-            className="col-start-1 col-end-2 row-start-1 grid divide-y divide-gray-100"
+            className=" col-start-1 col-end-2 row-start-1 grid divide-y divide-gray-100"
             style={{ gridTemplateRows: "repeat(48, minmax(3.6rem, 1fr))" }}
           >
-            <div className="row-end-1 h-7"></div>
+            {/* <div className="row-end-1 h-7"></div> */}
             {hours.map((hour, index) => (
-              <React.Fragment key={index}>
+              <div key={index}>
                 <div>
                   <div className="left-0 -ml-14 -mt-2.5 w-14 pr-2 text-right text-xs leading-5 text-gray-400">
                     {hour}
                   </div>
                 </div>
                 <div />
-              </React.Fragment>
+              </div>
             ))}
           </div>
 
-          {/* not visible slots grid for values */}
           <div
             className="z-10 col-start-1 col-end-2 row-start-1 divide-y divide-gray-100"
             style={{ gridTemplateRows: "repeat(288, minmax(0rem, 1fr))" }}
+            ref={gridRef}
           >
-            <div className="row-end-1 h-7"></div>
             {slots.map((slot, index) => (
               <div
-                onMouseDown={() => handleMouseDown(slot)}
-                onMouseUp={() => handleMouseUp(slot)}
-                onMouseOver={() => handleMouseOver(slot)}
+                onMouseDown={handleMouseDown}
+                onMouseOver={handleMouseMove}
+                onMouseUp={handleMouseUp}
                 key={index}
                 className="opacity-0"
               >
@@ -114,7 +139,7 @@ function DayView() {
                 gridTemplateRows: "repeat(288, minmax(0, 1fr)) auto",
               }}
             >
-              <div className="row-end-1 h-7"></div>
+              {/* <div className="row-end-1 h-7"></div> */}
               <li
                 className="relative mt-px flex "
                 style={{
